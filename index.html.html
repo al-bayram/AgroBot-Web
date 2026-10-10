@@ -1,0 +1,324 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>AgroBot - Dashboard Petani</title>
+<style>
+  * { box-sizing: border-box; }
+  body { margin: 0; font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; background: #f5f2e8; color: #1b2b1b; }
+  header { background: #1b5e20; color: #fff; padding: 14px 16px; }
+  header h1 { margin: 0; font-size: 20px; }
+  #status-server { font-size: 13px; margin-top: 4px; }
+  main { max-width: 560px; margin: 0 auto; padding: 12px 16px 40px; }
+  h2 { font-size: 17px; color: #1b5e20; margin: 20px 0 8px; }
+
+  .banner { padding: 10px 12px; border-radius: 10px; font-weight: 600; text-align: center; background: #e0e0e0; }
+  .banner.online { background: #c8e6c9; color: #1b5e20; }
+  .banner.offline { background: #ffcdd2; color: #b71c1c; }
+  .banner.demo { background: #ffe0b2; color: #e65100; }
+  .peringatan { margin-top: 10px; padding: 10px 12px; border-radius: 10px; background: #fff3cd; border-left: 6px solid #f9a825; font-weight: 600; }
+
+  .kartu-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .kartu { background: #fff; border-radius: 14px; padding: 12px; border-left: 6px solid #b0bfb0; box-shadow: 0 1px 4px rgba(0,0,0,.08); }
+  .kartu .judul { font-size: 13px; color: #4a5a4a; }
+  .kartu .nilai { font-size: 30px; font-weight: 700; margin-top: 4px; }
+  .kartu .nilai small { font-size: 15px; font-weight: 500; }
+  .kartu .ket { font-size: 12px; color: #4a5a4a; min-height: 15px; }
+  .kartu.merah { border-left-color: #d32f2f; background: #fdecea; }
+  .kartu.kuning { border-left-color: #f9a825; background: #fff8e1; }
+  .kartu.hijau { border-left-color: #2e7d32; background: #e8f5e9; }
+  .kartu.lama .nilai { opacity: .45; }
+
+  .status-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+  .status-kotak { background: #fff; border-radius: 12px; padding: 10px 6px; text-align: center; }
+  .status-kotak span { display: block; font-size: 12px; color: #4a5a4a; }
+  .status-kotak b { font-size: 18px; }
+
+  button { font: inherit; border: 0; border-radius: 12px; padding: 14px 10px; font-weight: 700; color: #fff; background: #2e7d32; cursor: pointer; }
+  button.merah { background: #d32f2f; }
+  button.demo { background: #f9a825; color: #1b2b1b; padding: 10px 16px; }
+  button:disabled { background: #c5d0c5; color: #8a998a; cursor: not-allowed; }
+  button.aktif-mode { outline: 4px solid #f9a825; }
+  .baris { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .catatan { font-size: 13px; color: #4a5a4a; margin: 6px 0 0; }
+
+  .dpad { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; max-width: 320px; margin: 0 auto; }
+  .dpad .maju { grid-column: 2; grid-row: 1; }
+  .dpad .kiri { grid-column: 1; grid-row: 2; }
+  .dpad .stop { grid-column: 2; grid-row: 2; }
+  .dpad .kanan { grid-column: 3; grid-row: 2; }
+  .dpad .mundur { grid-column: 2; grid-row: 3; }
+
+  .kotak-putih { background: #fff; border-radius: 14px; padding: 10px; }
+  #grafik { width: 100%; height: 180px; display: block; }
+  .tengah { text-align: center; margin-top: 16px; }
+  pre { background: #1e2a1e; color: #c8f7c8; padding: 10px; border-radius: 10px; font-size: 12px; white-space: pre-wrap; word-break: break-all; min-height: 60px; margin: 0; }
+  #mentah { font-size: 12px; color: #4a5a4a; word-break: break-all; margin: 6px 0 0; }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>AgroBot - Dashboard Petani</h1>
+  <div id="status-server">Menyambung ke server...</div>
+</header>
+
+<main>
+  <div id="banner-robot" class="banner">Menunggu data dari robot...</div>
+  <div id="peringatan" class="peringatan" hidden>Halangan dekat - perintah Maju akan ditolak robot</div>
+
+  <h2>Kondisi Lahan</h2>
+  <section class="kartu-grid">
+    <div class="kartu" id="k-tanah"><div class="judul">Kelembapan Tanah</div><div class="nilai"><span id="v-tanah">--</span><small>%</small></div><div class="ket" id="t-tanah"></div></div>
+    <div class="kartu" id="k-suhu"><div class="judul">Suhu</div><div class="nilai"><span id="v-suhu">--</span><small>&deg;C</small></div><div class="ket"></div></div>
+    <div class="kartu" id="k-udara"><div class="judul">Kelembapan Udara</div><div class="nilai"><span id="v-udara">--</span><small>%</small></div><div class="ket"></div></div>
+    <div class="kartu" id="k-jarak"><div class="judul">Jarak Halangan</div><div class="nilai"><span id="v-jarak">--</span><small>cm</small></div><div class="ket"></div></div>
+  </section>
+
+  <h2>Status Robot</h2>
+  <section class="status-grid">
+    <div class="status-kotak"><span>Pompa</span><b id="s-pompa">--</b></div>
+    <div class="status-kotak"><span>Gerak</span><b id="s-gerak">--</b></div>
+    <div class="status-kotak"><span>Mode</span><b id="s-mode">--</b></div>
+  </section>
+
+  <h2>Kontrol</h2>
+  <div class="baris">
+    <button id="btn-auto" class="tombol-mode" data-cmd='{"mode":"auto"}'>MODE AUTO</button>
+    <button id="btn-manual" class="tombol-mode" data-cmd='{"mode":"manual"}'>MODE MANUAL</button>
+  </div>
+  <p class="catatan">Tombol siram &amp; arah aktif hanya di mode MANUAL dan saat robot online.</p>
+
+  <h2>Penyiraman</h2>
+  <div class="baris">
+    <button class="kontrol" data-cmd='{"pompa":"on"}'>SIRAM ON</button>
+    <button class="kontrol merah" data-cmd='{"pompa":"off"}'>SIRAM OFF</button>
+  </div>
+
+  <h2>Gerak Robot</h2>
+  <div class="dpad">
+    <button class="kontrol maju" data-cmd='{"gerak":"maju"}'>&#9650; Maju</button>
+    <button class="kontrol kiri" data-cmd='{"gerak":"kiri"}'>&#9664; Kiri</button>
+    <button class="kontrol stop merah" data-cmd='{"gerak":"stop"}'>&#9632; Stop</button>
+    <button class="kontrol kanan" data-cmd='{"gerak":"kanan"}'>Kanan &#9654;</button>
+    <button class="kontrol mundur" data-cmd='{"gerak":"mundur"}'>&#9660; Mundur</button>
+  </div>
+
+  <h2>Grafik Kelembapan Tanah</h2>
+  <div class="kotak-putih"><canvas id="grafik"></canvas></div>
+  <p class="catatan">30 data terakhir. Garis putus-putus = batas 35% dan 65%.</p>
+
+  <div class="tengah"><button id="btn-demo" class="demo">Mode Demo: MATI</button></div>
+
+  <h2>Log (untuk cek tes)</h2>
+  <pre id="log">-</pre>
+  <p id="mentah">Data mentah terakhir dari robot: -</p>
+</main>
+
+<script src="https://cdn.jsdelivr.net/npm/mqtt@5/dist/mqtt.min.js"></script>
+<script>
+// ============ PENGATURAN (ubah di sini saja) ============
+const BROKER_URL = "wss://broker.hivemq.com:8884/mqtt";
+const MQTT_USERNAME = "";          // kosongkan untuk broker publik
+const MQTT_PASSWORD = "";
+const PROJECT_ID = "agrobot-xii-7k2";
+const OFFLINE_SETELAH_DETIK = 10;  // robot dianggap OFFLINE kalau selama ini tidak ada pesan /data
+const BATAS_HALANGAN_CM = 20;      // sama dengan aturan robot
+// ========================================================
+
+const TOPIK_DATA = PROJECT_ID + "/data";
+const TOPIK_CMD = PROJECT_ID + "/cmd";
+const GERAK_VALID = ["maju", "mundur", "kiri", "kanan", "stop"];
+const MODE_VALID = ["auto", "manual"];
+
+let client = null;
+let terhubung = false;
+let waktuPesanTerakhir = 0;
+let demoTimer = null;
+let riwayatTanah = [];
+let state = { tanah: null, suhu: null, udara: null, jarak: null, pompa: false, gerak: "stop", mode: "auto" };
+const logBaris = [];
+
+function $(id) { return document.getElementById(id); }
+
+// Ambil angka yang valid, selain itu null (supaya tampil "--")
+function angka(v) { return (typeof v === "number" && isFinite(v)) ? v : null; }
+function tampil(v, desimal) { return v === null ? "--" : (desimal ? v.toFixed(1) : String(Math.round(v))); }
+function robotOnline() { return waktuPesanTerakhir > 0 && (Date.now() - waktuPesanTerakhir) < OFFLINE_SETELAH_DETIK * 1000; }
+
+function catat(teks) {
+  const jam = new Date().toLocaleTimeString("id-ID", { hour12: false });
+  logBaris.unshift(jam + "  " + teks);
+  if (logBaris.length > 8) logBaris.pop();
+  $("log").textContent = logBaris.join("\n");
+}
+
+// Terima satu laporan dari robot (atau dari Mode Demo)
+function terimaData(d, dariDemo) {
+  if (!d || typeof d !== "object") return;
+  if (!dariDemo && demoTimer) matikanDemo();   // data asli datang -> Demo otomatis mati
+  waktuPesanTerakhir = Date.now();
+  state.tanah = angka(d.tanah);
+  state.suhu = angka(d.suhu);
+  state.udara = angka(d.udara);
+  state.jarak = angka(d.jarak);
+  state.pompa = (d.pompa === true);
+  if (GERAK_VALID.indexOf(d.gerak) !== -1) state.gerak = d.gerak;
+  if (MODE_VALID.indexOf(d.mode) !== -1) state.mode = d.mode;
+  if (state.tanah !== null) {
+    riwayatTanah.push(state.tanah);
+    if (riwayatTanah.length > 30) riwayatTanah.shift();
+  }
+  gambar();
+}
+
+function isiKartu(idKartu, idNilai, teks, kelas, lama, idKet, ket) {
+  $(idNilai).textContent = teks;
+  const k = $(idKartu);
+  k.className = "kartu" + (kelas ? " " + kelas : "") + (lama ? " lama" : "");
+  if (idKet) $(idKet).textContent = ket || "";
+}
+
+function gambar() {
+  const online = robotOnline();
+  const lama = waktuPesanTerakhir > 0 && !online && !demoTimer;
+
+  $("status-server").textContent = terhubung ? "Tersambung ke server ✔" : "Menyambung ke server...";
+
+  const banner = $("banner-robot");
+  if (demoTimer) { banner.className = "banner demo"; banner.textContent = "MODE DEMO - data palsu, bukan dari robot"; }
+  else if (waktuPesanTerakhir === 0) { banner.className = "banner"; banner.textContent = "Menunggu data dari robot..."; }
+  else if (online) { banner.className = "banner online"; banner.textContent = "ROBOT ONLINE"; }
+  else { banner.className = "banner offline"; banner.textContent = "ROBOT OFFLINE - angka di bawah adalah data lama"; }
+
+  // kartu tanah: <35 merah, 35-65 kuning, >65 hijau
+  let kelas = "", ket = "";
+  if (state.tanah !== null) {
+    if (state.tanah < 35) { kelas = "merah"; ket = "Kering - perlu disiram"; }
+    else if (state.tanah <= 65) { kelas = "kuning"; ket = "Cukup lembap"; }
+    else { kelas = "hijau"; ket = "Basah"; }
+  }
+  isiKartu("k-tanah", "v-tanah", tampil(state.tanah, false), kelas, lama, "t-tanah", ket);
+  isiKartu("k-suhu", "v-suhu", tampil(state.suhu, true), "", lama);
+  isiKartu("k-udara", "v-udara", tampil(state.udara, true), "", lama);
+  isiKartu("k-jarak", "v-jarak", tampil(state.jarak, false), "", lama);
+
+  const adaData = waktuPesanTerakhir > 0;
+  $("s-pompa").textContent = adaData ? (state.pompa ? "NYALA" : "MATI") : "--";
+  $("s-gerak").textContent = adaData ? state.gerak.toUpperCase() : "--";
+  $("s-mode").textContent = adaData ? state.mode.toUpperCase() : "--";
+
+  // Penguncian tombol mengikuti laporan robot
+  const kontrolAktif = terhubung && online && state.mode === "manual";
+  document.querySelectorAll(".kontrol").forEach(function (b) { b.disabled = !kontrolAktif; });
+  document.querySelectorAll(".tombol-mode").forEach(function (b) { b.disabled = !terhubung; });
+  $("btn-auto").classList.toggle("aktif-mode", adaData && state.mode === "auto");
+  $("btn-manual").classList.toggle("aktif-mode", adaData && state.mode === "manual");
+
+  $("peringatan").hidden = !(online && state.mode === "manual" && state.jarak !== null && state.jarak < BATAS_HALANGAN_CM);
+
+  gambarGrafik();
+}
+
+function gambarGrafik() {
+  const c = $("grafik");
+  const g = c.getContext && c.getContext("2d");
+  if (!g) return;
+  const dpr = window.devicePixelRatio || 1;
+  const w = c.clientWidth, h = c.clientHeight;
+  if (!w || !h) return;
+  c.width = w * dpr; c.height = h * dpr;
+  g.setTransform(dpr, 0, 0, dpr, 0, 0);
+  g.clearRect(0, 0, w, h);
+  const kiri = 32, kanan = 10, atas = 10, bawah = 10;
+  const pw = w - kiri - kanan, ph = h - atas - bawah;
+  const y = function (v) { return atas + ph * (1 - v / 100); };
+
+  g.font = "11px sans-serif"; g.textAlign = "right"; g.textBaseline = "middle";
+  [0, 35, 65, 100].forEach(function (v) {
+    g.fillStyle = "#555"; g.fillText(String(v), kiri - 6, y(v));
+    g.strokeStyle = (v === 35 || v === 65) ? "#f9a825" : "#e0e0e0";
+    g.setLineDash((v === 35 || v === 65) ? [6, 4] : []);
+    g.beginPath(); g.moveTo(kiri, y(v)); g.lineTo(kiri + pw, y(v)); g.stroke();
+  });
+  g.setLineDash([]);
+
+  if (riwayatTanah.length === 0) return;
+  const x = function (i) { return kiri + (riwayatTanah.length === 1 ? pw : pw * i / 29); };
+  g.strokeStyle = "#2e7d32"; g.lineWidth = 2.5; g.lineJoin = "round";
+  g.beginPath();
+  riwayatTanah.forEach(function (v, i) { if (i === 0) g.moveTo(x(i), y(v)); else g.lineTo(x(i), y(v)); });
+  g.stroke();
+  const n = riwayatTanah.length - 1;
+  g.fillStyle = "#2e7d32"; g.beginPath(); g.arc(x(n), y(riwayatTanah[n]), 4, 0, Math.PI * 2); g.fill();
+}
+
+// Kirim perintah ke robot (tanpa retain!)
+function kirim(obj) {
+  if (!client || !terhubung) { catat("GAGAL kirim: belum tersambung ke server"); return; }
+  const teks = JSON.stringify(obj);
+  client.publish(TOPIK_CMD, teks, { qos: 0, retain: false });
+  catat("KIRIM " + teks);
+}
+
+function sambung() {
+  if (typeof mqtt === "undefined") {
+    $("status-server").textContent = "Library MQTT gagal dimuat - cek internet lalu tekan F5";
+    return;
+  }
+  const opsi = { clientId: "agrobot-web-" + Math.floor(Math.random() * 1000000), clean: true, reconnectPeriod: 3000, connectTimeout: 10000 };
+  if (MQTT_USERNAME) { opsi.username = MQTT_USERNAME; opsi.password = MQTT_PASSWORD; }
+  client = mqtt.connect(BROKER_URL, opsi);
+
+  client.on("connect", function () {
+    terhubung = true;
+    client.subscribe(TOPIK_DATA, { qos: 0 });
+    catat("Tersambung ke server, mendengarkan " + TOPIK_DATA);
+    gambar();
+  });
+  client.on("reconnect", function () { catat("Menyambung ulang ke server..."); });
+  client.on("close", function () { if (terhubung) catat("Koneksi ke server terputus"); terhubung = false; gambar(); });
+  client.on("error", function (e) { catat("Error: " + (e && e.message ? e.message : e)); });
+  client.on("message", function (topik, payload) {
+    if (topik !== TOPIK_DATA) return;
+    const teks = payload.toString();
+    $("mentah").textContent = "Data mentah terakhir dari robot: " + teks;
+    let d;
+    try { d = JSON.parse(teks); } catch (e) { catat("Pesan rusak (bukan JSON), diabaikan"); return; }
+    terimaData(d, false);
+  });
+}
+
+// ---- Mode Demo (data palsu, hanya untuk cek tampilan) ----
+function nyalakanDemo() {
+  riwayatTanah = [];
+  let t = 50;
+  demoTimer = setInterval(function () {
+    t = Math.max(5, Math.min(95, t + (Math.random() * 16 - 8)));
+    terimaData({ tanah: t, suhu: 27 + Math.random() * 4, udara: 60 + Math.random() * 10, jarak: Math.round(20 + Math.random() * 100), pompa: t < 35, gerak: "stop", mode: state.mode }, true);
+  }, 2000);
+  $("btn-demo").textContent = "Mode Demo: NYALA";
+  gambar();
+}
+function matikanDemo() {
+  clearInterval(demoTimer);
+  demoTimer = null;
+  riwayatTanah = [];
+  $("btn-demo").textContent = "Mode Demo: MATI";
+}
+
+document.querySelectorAll("button[data-cmd]").forEach(function (b) {
+  b.addEventListener("click", function () { kirim(JSON.parse(b.dataset.cmd)); });
+});
+$("btn-demo").addEventListener("click", function () {
+  if (demoTimer) { matikanDemo(); gambar(); } else { nyalakanDemo(); }
+});
+window.addEventListener("resize", gambarGrafik);
+
+sambung();
+setInterval(gambar, 1000);
+gambar();
+</script>
+</body>
+</html>
